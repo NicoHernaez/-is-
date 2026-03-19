@@ -8,6 +8,7 @@ const NAV = [
   { href: "/promos", label: "Promos", icon: "🏷️" },
   { href: "/banks", label: "Bancos", icon: "🏦" },
   { href: "/cities", label: "Ciudades", icon: "📍" },
+  { href: "/negocios", label: "Negocios", icon: "🏪" },
   { href: "/club", label: "Club Amigas", icon: "💚" },
   { href: "/users", label: "Usuarias", icon: "👥" },
   { href: "/scraping", label: "Scraping", icon: "🤖" },

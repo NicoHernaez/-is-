@@ -7,7 +7,9 @@ const TIER_COLORS: Record<string, { bg: string; color: string }> = {
   tier1:  { bg: "var(--brand-green)", color: "var(--brand-gold)" },
   tier2:  { bg: "var(--brand-gold)", color: "white" },
   tier3:  { bg: "var(--sage)", color: "white" },
+  ola5:   { bg: "#64748b", color: "white" },
 };
+const DEFAULT_TIER = { bg: "#9CA3AF", color: "white" };
 
 export default async function CitiesPage() {
   const sb = createServerClient();
@@ -39,7 +41,7 @@ export default async function CitiesPage() {
           </div>
           <div className="grid grid-cols-3 gap-2">
             {provCities!.map((c) => {
-              const tier = TIER_COLORS[c.tier || "tier3"];
+              const tier = TIER_COLORS[c.tier || "tier3"] || DEFAULT_TIER;
               return (
                 <div key={c.id} className="flex items-center gap-2 px-3 py-2 rounded-xl border"
                   style={{ background: "var(--surface)", borderColor: c.is_active ? "var(--conf-green)" : "var(--bg-dark)" }}>
