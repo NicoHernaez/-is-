@@ -1,0 +1,10 @@
+{
+  "buildCommand": "cd admin-panel && npm install && npm run build",
+  "outputDirectory": "admin-panel/.next",
+  "installCommand": "cd admin-panel && npm install",
+  "framework": "nextjs",
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://pexhurygyzhhcdyvhlxs.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBleGh1cnlneXpoaGNkeXZobHhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5NDQ5NzYsImV4cCI6MjA4NjUyMDk3Nn0.5gAcp-xOxjk9xujdiS8pE0iWBok4yMXLbCkAU-T0NFY"
+  }
+}
