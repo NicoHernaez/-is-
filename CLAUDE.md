@@ -218,11 +218,12 @@
 
 | Componente | URL | Plataforma |
 |-----------|-----|------------|
-| **App usuario (PWA)** | `esplus.casa` | Vercel (proyecto `esplus-app`) |
-| **Admin Panel** | Vercel (proyecto `is`) | Vercel |
+| **App usuario (PWA)** | `esplus.casa` / `esplus-app.vercel.app` | Vercel (proyecto `esplus-app`, root: `app/`) |
+| **Admin Panel** | `is-lac.vercel.app` | Vercel (proyecto `is`, root: `admin-panel/`) |
 
-- **Dominio:** `esplus.casa` → apunta a Vercel (app usuario)
+- **Dominio:** `esplus.casa` → DNS en Name.com → Vercel (A record 76.76.21.21)
 - **WhatsApp Business:** usa `esplus.casa` como URL de negocio
+- **Repo GitHub:** `NicoHernaez/-is-` → auto-deploy ambos proyectos en push a master
 
 ## Migraciones pendientes de ejecutar
 
