@@ -79,20 +79,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     if (urlPhone) {
       setPhone(urlPhone);
-      // Limpiar URL param
       window.history.replaceState({}, "", window.location.pathname);
     } else if (storedPhone) {
       setPhoneState(storedPhone);
     } else {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const [reloadTrigger, setReloadTrigger] = useState(0);
-
-  function reloadProfile() {
-    setReloadTrigger(prev => prev + 1);
-  }
 
   // Cuando hay phone, cargar perfil de Supabase
   useEffect(() => {
@@ -163,7 +157,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
 
     loadProfile();
-  }, [phone, reloadTrigger]);
+  }, [phone]);
 
   return (
     <UserContext.Provider value={{ user, loading, phone, setPhone, reloadProfile, logout }}>

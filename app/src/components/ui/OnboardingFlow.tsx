@@ -200,8 +200,9 @@ export default function OnboardingFlow({ phone, onComplete }: OnboardingFlowProp
       body: JSON.stringify({ phone, name: "Amiga", query_text: "hola" }),
     }).catch(() => {});
 
-    // Recargar la app para mostrar el dashboard con datos reales
-    window.location.reload();
+    // Forzar recarga — guardar phone en localStorage por si acaso y navegar
+    localStorage.setItem("esplus_phone", phone);
+    window.location.href = "/";
   };
 
   // ─── Paso actual según cards por banco ─────────────────
