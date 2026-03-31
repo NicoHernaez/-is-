@@ -148,74 +148,38 @@ export default function OnboardingFlow({ phone, onComplete }: OnboardingFlowProp
     });
   };
 
-  // Guardar todo en Supabase
+  // Guardar todo en Supabase via RPC (bypassa RLS)
   const saveOnboarding = async () => {
     setSaving(true);
     setStep("saving");
 
-    // 1. Crear usuario
-    const { data: userId } = await supabase.rpc("get_or_create_wa_user", {
+    // Armar arrays para la RPC
+    const banksPayload = selectedBanks.map(slug => ({
+      slug,
+      cards: bankCards[slug] || ["debit"],
+    }));
+
+    const walletsPayload = selectedWallets.map(slug => ({
+      slug,
+      cards: walletCards[slug] || [],
+    }));
+
+    const { data: userId, error } = await supabase.rpc("complete_app_onboarding", {
       p_phone: phone,
-      p_name: "Amiga",
+      p_province: province,
+      p_city: city,
+      p_banks: banksPayload,
+      p_wallets: walletsPayload,
     });
 
-    if (!userId) { setSaving(false); return; }
-
-    // 2. Guardar ubicación
-    await supabase.from("user_locations").delete().eq("user_id", userId).eq("is_primary", true);
-    await supabase.from("user_locations").insert({
-      user_id: userId, city, province, is_primary: true,
-    });
-
-    // 3. Guardar bancos + tarjetas
-    // Borrar medios de pago previos
-    await supabase.from("user_payment_methods").delete().eq("user_id", userId);
-
-    for (const bankSlug of selectedBanks) {
-      const cards = bankCards[bankSlug] || ["debit"];
-      for (const cardNet of cards) {
-        await supabase.from("user_payment_methods").insert({
-          user_id: userId, method_type: "bank_card", bank_slug: bankSlug, card_network: cardNet, is_active: true,
-        });
-      }
+    if (error) {
+      console.error("Onboarding error:", error);
+      setSaving(false);
+      setStep("wallets");
+      return;
     }
 
-    // 4. Guardar billeteras
-    for (const walletSlug of selectedWallets) {
-      await supabase.from("user_payment_methods").insert({
-        user_id: userId, method_type: "wallet", wallet_slug: walletSlug, is_active: true,
-      });
-      // Tarjetas de billetera
-      const wCards = walletCards[walletSlug] || [];
-      for (const cardNet of wCards) {
-        await supabase.from("user_payment_methods").insert({
-          user_id: userId, method_type: "wallet_card", wallet_slug: walletSlug, card_network: cardNet, is_active: true,
-        });
-      }
-    }
-
-    // 5. Marcar onboarding como completado
-    await supabase.from("users").update({
-      onboarding_completed: true,
-      onboarding_completed_at: new Date().toISOString(),
-      wa_frequency: "1x_week",
-      wa_preferred_hour: "night",
-    }).eq("id", userId);
-
-    // 6. Crear yapa_memory
-    const { data: memExists } = await supabase
-      .from("yapa_memory").select("user_id").eq("user_id", userId).limit(1);
-    if (!memExists || memExists.length === 0) {
-      await supabase.from("yapa_memory").insert({
-        user_id: userId, notes: JSON.stringify({ step: "completed", onboarding_completed: true }), free_queries_used: 0,
-      });
-    } else {
-      await supabase.from("yapa_memory").update({
-        notes: JSON.stringify({ step: "completed", onboarding_completed: true }),
-      }).eq("user_id", userId);
-    }
-
-    // 7. Enviar WA de bienvenida via yapa-query
+    // Enviar WA de bienvenida (no crítico)
     try {
       await fetch(YAPA_FUNCTION_URL, {
         method: "POST",
