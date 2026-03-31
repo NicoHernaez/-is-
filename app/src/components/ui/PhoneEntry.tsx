@@ -42,15 +42,15 @@ export default function PhoneEntry() {
               style={{ color: "var(--text-sec)" }}>
               Tu número de WhatsApp
             </label>
-            <div className="flex items-center gap-2 rounded-[16px] border px-4 py-3"
+            <div className="flex items-center gap-1.5 rounded-[16px] border px-4 py-3"
               style={{ background: "var(--surface)", borderColor: "rgba(74,94,60,0.12)" }}>
-              <span className="text-[14px]" style={{ color: "var(--text-sec)" }}>🇦🇷 +54</span>
+              <span className="text-[14px] font-semibold" style={{ color: "var(--text)" }}>🇦🇷 +54 9</span>
               <input
                 type="tel"
                 value={input}
-                onChange={e => setInput(e.target.value)}
+                onChange={e => setInput(e.target.value.replace(/[^\d\s\-]/g, ""))}
                 onKeyDown={e => e.key === "Enter" && handleSubmit()}
-                placeholder="9 2302 41-9234"
+                placeholder="2302 41-9234"
                 className="flex-1 text-[16px] border-none outline-none bg-transparent"
                 style={{ color: "var(--text)" }}
                 autoFocus
@@ -71,7 +71,7 @@ export default function PhoneEntry() {
 
           <div className="text-[11px] mt-6 text-center leading-relaxed max-w-[280px]"
             style={{ color: "var(--text-sec)" }}>
-            Si todavía no usás -es+, te vamos a mandar un mensaje de Yapa por WhatsApp para empezar 🛍️
+            Si es tu primera vez, te armamos el perfil en 1 minuto 🛍️
           </div>
         </>
       ) : (

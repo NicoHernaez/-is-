@@ -29,6 +29,7 @@ interface UserContextType {
   loading: boolean;
   phone: string | null;
   setPhone: (phone: string) => void;
+  reloadProfile: () => void;
   logout: () => void;
 }
 
@@ -37,6 +38,7 @@ const UserContext = createContext<UserContextType>({
   loading: true,
   phone: null,
   setPhone: () => {},
+  reloadProfile: () => {},
   logout: () => {},
 });
 
@@ -85,6 +87,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
   }, []);
+
+  const [reloadTrigger, setReloadTrigger] = useState(0);
+
+  function reloadProfile() {
+    setReloadTrigger(prev => prev + 1);
+  }
 
   // Cuando hay phone, cargar perfil de Supabase
   useEffect(() => {
@@ -155,10 +163,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
 
     loadProfile();
-  }, [phone]);
+  }, [phone, reloadTrigger]);
 
   return (
-    <UserContext.Provider value={{ user, loading, phone, setPhone, logout }}>
+    <UserContext.Provider value={{ user, loading, phone, setPhone, reloadProfile, logout }}>
       {children}
     </UserContext.Provider>
   );
