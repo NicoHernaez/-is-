@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "-es+" },
   other: {
-    "facebook-domain-verification": "r9gl6pxtgxrrqprltmhwms95yxq29j",
+    "facebook-domain-verification": "r9gl6pxtgxrrqprltmhwms95yxg29j",
   },
 };
 
