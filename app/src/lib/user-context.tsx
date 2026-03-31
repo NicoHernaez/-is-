@@ -29,7 +29,6 @@ interface UserContextType {
   loading: boolean;
   phone: string | null;
   setPhone: (phone: string) => void;
-  reloadProfile: () => void;
   logout: () => void;
 }
 
@@ -38,7 +37,6 @@ const UserContext = createContext<UserContextType>({
   loading: true,
   phone: null,
   setPhone: () => {},
-  reloadProfile: () => {},
   logout: () => {},
 });
 
@@ -160,7 +158,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, [phone]);
 
   return (
-    <UserContext.Provider value={{ user, loading, phone, setPhone, reloadProfile, logout }}>
+    <UserContext.Provider value={{ user, loading, phone, setPhone, logout }}>
       {children}
     </UserContext.Provider>
   );
