@@ -2,9 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { YAPA_FUNCTION_URL } from "@/lib/supabase";
-
-// TODO: get from auth
-const TEST_USER_ID = "bbd1033c-2776-4138-bc99-075beb18a2ae";
+import { useUser } from "@/lib/user-context";
 
 interface Message {
   from: "user" | "yapa";
@@ -12,8 +10,9 @@ interface Message {
 }
 
 export default function YapaPage() {
+  const { user } = useUser();
   const [messages, setMessages] = useState<Message[]>([
-    { from: "yapa", text: "¡Hola! Soy Yapa 🛍️ ¿Qué necesitás comprar? Contame y te digo cómo ahorrar." },
+    { from: "yapa", text: user ? `¡Hola ${user.display_name}! Soy Yapa 🛍️ ¿Qué necesitás comprar?` : "¡Hola! Soy Yapa 🛍️ ¿Qué necesitás comprar? Contame y te digo cómo ahorrar." },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,7 +31,7 @@ export default function YapaPage() {
       const res = await fetch(YAPA_FUNCTION_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: TEST_USER_ID, query_text: query }),
+        body: JSON.stringify({ phone: user?.wa_phone || "", name: user?.display_name || "", query_text: query }),
       });
       const data = await res.json();
       setMessages(p => [...p, { from: "yapa", text: data.reply || "Perdón, no pude procesar tu consulta." }]);
