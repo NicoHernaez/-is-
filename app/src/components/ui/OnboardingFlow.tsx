@@ -12,25 +12,54 @@ const PROVINCES = [
   "Santiago del Estero", "Tierra del Fuego", "Tucumán",
 ];
 
-const BANKS = [
+// Bancos provinciales — solo se muestran en SU provincia
+const PROVINCIAL_BANKS = [
   { slug: "pampa", name: "Banco de La Pampa", color: "#1B5E20", provinces: ["La Pampa"] },
   { slug: "provincia", name: "Banco Provincia", color: "#0D47A1", provinces: ["Buenos Aires"] },
   { slug: "ciudad", name: "Banco Ciudad", color: "#E65100", provinces: ["CABA"] },
   { slug: "bancor", name: "Bancor", color: "#1565C0", provinces: ["Córdoba"] },
   { slug: "santafe", name: "Nuevo Bco Santa Fe", color: "#B71C1C", provinces: ["Santa Fe"] },
-  { slug: "galicia", name: "Galicia", color: "#EF6C00", icon: "🟠" },
-  { slug: "macro", name: "Macro", color: "#1A237E", icon: "🔵" },
-  { slug: "santander", name: "Santander", color: "#D32F2F", icon: "🔴" },
-  { slug: "bbva", name: "BBVA", color: "#004481", icon: "🔵" },
-  { slug: "hsbc", name: "HSBC", color: "#DB0011", icon: "🔴" },
-  { slug: "nacion", name: "Banco Nación", color: "#1565C0", icon: "🔵" },
-  { slug: "icbc", name: "ICBC", color: "#C62828", icon: "🔴" },
-  { slug: "hipotecario", name: "Hipotecario", color: "#00695C", icon: "🟢" },
-  { slug: "supervielle", name: "Supervielle", color: "#6A1B9A", icon: "🟣" },
-  { slug: "comafi", name: "Comafi", color: "#0277BD", icon: "🔵" },
-  { slug: "brubank", name: "Brubank", color: "#7C4DFF", icon: "🟣" },
-  { slug: "sol", name: "Banco del Sol", color: "#F9A825", icon: "🟡" },
+  { slug: "bersa", name: "Bersa", color: "#004D40", provinces: ["Entre Ríos"] },
+  { slug: "tucuman", name: "Banco Tucumán", color: "#1565C0", provinces: ["Tucumán"] },
+  { slug: "bpn", name: "Bco Provincia Neuquén", color: "#0D47A1", provinces: ["Neuquén"] },
+  { slug: "chaco", name: "Nuevo Bco del Chaco", color: "#2E7D32", provinces: ["Chaco"] },
+  { slug: "corrientes", name: "Banco de Corrientes", color: "#00695C", provinces: ["Corrientes"] },
+  { slug: "sanjuan", name: "Banco San Juan", color: "#1565C0", provinces: ["San Juan"] },
+  { slug: "chubut", name: "Banco del Chubut", color: "#0277BD", provinces: ["Chubut"] },
+  { slug: "santacruz", name: "Banco de Santa Cruz", color: "#004D40", provinces: ["Santa Cruz"] },
+  { slug: "tierradelfuego", name: "Bco Tierra del Fuego", color: "#0D47A1", provinces: ["Tierra del Fuego"] },
+  { slug: "formosa", name: "Banco de Formosa", color: "#1B5E20", provinces: ["Formosa"] },
+  { slug: "larioja", name: "Nuevo Bco de La Rioja", color: "#B71C1C", provinces: ["La Rioja"] },
 ];
+
+// Bancos nacionales — se muestran en TODAS las provincias
+const NATIONAL_BANKS = [
+  { slug: "nacion", name: "Banco Nación", color: "#1565C0" },
+  { slug: "galicia", name: "Galicia", color: "#EF6C00" },
+  { slug: "santander", name: "Santander", color: "#D32F2F" },
+  { slug: "bbva", name: "BBVA", color: "#004481" },
+  { slug: "macro", name: "Macro", color: "#1A237E" },
+  { slug: "hipotecario", name: "Hipotecario", color: "#00695C" },
+  { slug: "supervielle", name: "Supervielle", color: "#6A1B9A" },
+  { slug: "patagonia", name: "Banco Patagonia", color: "#0277BD" },
+  { slug: "icbc", name: "ICBC", color: "#C62828" },
+  { slug: "hsbc", name: "HSBC", color: "#DB0011" },
+  { slug: "comafi", name: "Comafi", color: "#0277BD" },
+  { slug: "brubank", name: "Brubank", color: "#7C4DFF" },
+  { slug: "sol", name: "Banco del Sol", color: "#F9A825" },
+];
+
+// Combina provincial de la provincia + nacionales
+function getBanksForProvince(prov: string) {
+  const provincial = PROVINCIAL_BANKS.filter(b => b.provinces.includes(prov));
+  // Filtrar nacionales que no sean el mismo slug que un provincial (ej: macro en Salta)
+  const provincialSlugs = provincial.map(b => b.slug);
+  const nationals = NATIONAL_BANKS.filter(b => !provincialSlugs.includes(b.slug));
+  return [
+    ...provincial.map(b => ({ ...b, isProvincial: true })),
+    ...nationals.map(b => ({ ...b, provinces: [] as string[], isProvincial: false })),
+  ];
+}
 
 const CARD_TYPES = [
   { id: "debit", name: "Débito", color: "#2E7D32", bg: "#E8F5E9", icon: "💳" },
@@ -88,12 +117,8 @@ export default function OnboardingFlow({ phone, onComplete }: OnboardingFlowProp
     loadCities();
   }, [province]);
 
-  // Bancos ordenados: provincial primero
-  const sortedBanks = [...BANKS].sort((a, b) => {
-    const aIsProv = a.provinces?.includes(province) ? 0 : 1;
-    const bIsProv = b.provinces?.includes(province) ? 0 : 1;
-    return aIsProv - bIsProv;
-  });
+  // Bancos filtrados por provincia (provincial primero + nacionales)
+  const sortedBanks = getBanksForProvince(province);
 
   const toggleBank = (slug: string) => {
     setSelectedBanks(prev =>
@@ -294,7 +319,7 @@ export default function OnboardingFlow({ phone, onComplete }: OnboardingFlowProp
             <div className="flex flex-col gap-2.5">
               {sortedBanks.map(bank => {
                 const selected = selectedBanks.includes(bank.slug);
-                const isProv = bank.provinces?.includes(province);
+                const isProv = "isProvincial" in bank && bank.isProvincial;
                 return (
                   <button key={bank.slug} onClick={() => toggleBank(bank.slug)}
                     className="flex items-center gap-3 p-4 rounded-[16px] border transition-all active:scale-[0.98]"
@@ -335,15 +360,27 @@ export default function OnboardingFlow({ phone, onComplete }: OnboardingFlowProp
             <button onClick={() => setStep("banks")} className="text-[12px] font-semibold mb-3" style={{ color: "var(--blush)" }}>← Cambiar bancos</button>
             {(() => {
               const bankSlug = selectedBanks[currentBankIdx];
-              const bank = BANKS.find(b => b.slug === bankSlug)!;
+              const allBanks = getBanksForProvince(province);
+              const bank = allBanks.find(b => b.slug === bankSlug) || { slug: bankSlug, name: bankSlug, color: "#4A5E3C", provinces: [] };
               const selected = bankCards[bankSlug] || [];
               return (
                 <>
-                  <h2 className="text-[20px] font-bold mb-1" style={{ color: "var(--text)" }}>
-                    Tarjetas en {bank.name}
-                  </h2>
-                  <p className="text-[13px] mb-5" style={{ color: "var(--text-sec)" }}>
-                    Banco {currentBankIdx + 1} de {selectedBanks.length} — marcá las que tenés
+                  {/* Banner del banco con su color */}
+                  <div className="rounded-[16px] p-4 mb-4 flex items-center gap-3"
+                    style={{ background: bank.color, boxShadow: `0 4px 16px ${bank.color}30` }}>
+                    <div className="w-[48px] h-[48px] rounded-[14px] flex items-center justify-center text-[20px] font-bold text-white"
+                      style={{ background: "rgba(255,255,255,0.2)" }}>
+                      {bank.name.charAt(0)}
+                    </div>
+                    <div>
+                      <div className="text-[18px] font-bold text-white">{bank.name}</div>
+                      <div className="text-[11px] text-white/60">
+                        Banco {currentBankIdx + 1} de {selectedBanks.length}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[14px] font-semibold mb-4" style={{ color: "var(--text)" }}>
+                    Marcá las tarjetas que tenés
                   </p>
                   <div className="flex flex-col gap-3">
                     {CARD_TYPES.map(card => {
