@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   description: "Tu asistente de ahorro inteligente. Descuentos personalizados con tus tarjetas y billeteras.",
   manifest: "/manifest.json",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "-es+" },
+  other: {
+    "facebook-domain-verification": "r9gl6pxtgxrrqprltmhwms95yxq29j",
+  },
 };
 
 export const viewport: Viewport = {
@@ -21,7 +24,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es">
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
-        <meta name="facebook-domain-verification" content="r9gl6pxtgxrrqprltmhwms95yxq29j" />
       </head>
       <body>{children}</body>
     </html>
