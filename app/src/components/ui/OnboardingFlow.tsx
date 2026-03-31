@@ -32,7 +32,7 @@ const PROVINCIAL_BANKS = [
   { slug: "larioja", name: "Nuevo Bco de La Rioja", color: "#B71C1C", provinces: ["La Rioja"] },
 ];
 
-// Bancos nacionales — se muestran en TODAS las provincias
+// Bancos nacionales principales — se muestran en TODAS las provincias
 const NATIONAL_BANKS = [
   { slug: "nacion", name: "Banco Nación", color: "#1565C0" },
   { slug: "galicia", name: "Galicia", color: "#EF6C00" },
@@ -44,6 +44,10 @@ const NATIONAL_BANKS = [
   { slug: "patagonia", name: "Banco Patagonia", color: "#0277BD" },
   { slug: "icbc", name: "ICBC", color: "#C62828" },
   { slug: "hsbc", name: "HSBC", color: "#DB0011" },
+];
+
+// Bancos secundarios — se muestran en sección desplegable "Otros bancos"
+const OTHER_BANKS = [
   { slug: "comafi", name: "Comafi", color: "#0277BD" },
   { slug: "brubank", name: "Brubank", color: "#7C4DFF" },
   { slug: "sol", name: "Banco del Sol", color: "#F9A825" },
@@ -52,13 +56,22 @@ const NATIONAL_BANKS = [
 // Combina provincial de la provincia + nacionales
 function getBanksForProvince(prov: string) {
   const provincial = PROVINCIAL_BANKS.filter(b => b.provinces.includes(prov));
-  // Filtrar nacionales que no sean el mismo slug que un provincial (ej: macro en Salta)
   const provincialSlugs = provincial.map(b => b.slug);
   const nationals = NATIONAL_BANKS.filter(b => !provincialSlugs.includes(b.slug));
   return [
     ...provincial.map(b => ({ ...b, isProvincial: true })),
     ...nationals.map(b => ({ ...b, provinces: [] as string[], isProvincial: false })),
   ];
+}
+
+// Todos los bancos (para buscar por slug en pantalla tarjetas)
+function findBankBySlug(slug: string, prov: string) {
+  const all = [
+    ...PROVINCIAL_BANKS,
+    ...NATIONAL_BANKS.map(b => ({ ...b, provinces: [] as string[] })),
+    ...OTHER_BANKS.map(b => ({ ...b, provinces: [] as string[] })),
+  ];
+  return all.find(b => b.slug === slug) || { slug, name: slug, color: "#4A5E3C", provinces: [] };
 }
 
 const CARD_TYPES = [
@@ -101,6 +114,7 @@ export default function OnboardingFlow({ phone, onComplete }: OnboardingFlowProp
   const [walletCards, setWalletCards] = useState<Record<string, string[]>>({});
   const [currentWalletIdx, setCurrentWalletIdx] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [showOtherBanks, setShowOtherBanks] = useState(false);
 
   // Cargar ciudades cuando se elige provincia
   useEffect(() => {
@@ -179,17 +193,15 @@ export default function OnboardingFlow({ phone, onComplete }: OnboardingFlowProp
       return;
     }
 
-    // Enviar WA de bienvenida (no crítico)
-    try {
-      await fetch(YAPA_FUNCTION_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, name: "Amiga", query_text: "hola" }),
-      });
-    } catch { /* no critico */ }
+    // Enviar WA de bienvenida (no crítico, en background)
+    fetch(YAPA_FUNCTION_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, name: "Amiga", query_text: "hola" }),
+    }).catch(() => {});
 
-    setSaving(false);
-    onComplete();
+    // Recargar la app para mostrar el dashboard con datos reales
+    window.location.reload();
   };
 
   // ─── Paso actual según cards por banco ─────────────────
@@ -307,6 +319,37 @@ export default function OnboardingFlow({ phone, onComplete }: OnboardingFlowProp
                   </button>
                 );
               })}
+
+              {/* Otros bancos (desplegable) */}
+              <button onClick={() => setShowOtherBanks(!showOtherBanks)}
+                className="flex items-center justify-center gap-2 py-3 rounded-[14px] text-[13px] font-semibold"
+                style={{ color: "var(--text-sec)", background: "rgba(74,94,60,0.04)" }}>
+                {showOtherBanks ? "Ocultar otros bancos ▲" : "Otros bancos ▼"}
+              </button>
+              {showOtherBanks && OTHER_BANKS.map(bank => {
+                const selected = selectedBanks.includes(bank.slug);
+                return (
+                  <button key={bank.slug} onClick={() => toggleBank(bank.slug)}
+                    className="flex items-center gap-3 p-4 rounded-[16px] border transition-all active:scale-[0.98]"
+                    style={{
+                      background: selected ? bank.color + "12" : "var(--surface)",
+                      borderColor: selected ? bank.color : "rgba(74,94,60,0.08)",
+                      borderWidth: selected ? 2 : 1,
+                    }}>
+                    <div className="w-[40px] h-[40px] rounded-[12px] flex items-center justify-center text-[14px] font-bold text-white"
+                      style={{ background: bank.color }}>
+                      {bank.name.charAt(0)}
+                    </div>
+                    <div className="flex-1 text-left">
+                      <div className="text-[14px] font-semibold" style={{ color: "var(--text)" }}>{bank.name}</div>
+                    </div>
+                    <div className="w-[24px] h-[24px] rounded-full border-2 flex items-center justify-center"
+                      style={{ borderColor: selected ? bank.color : "rgba(74,94,60,0.2)", background: selected ? bank.color : "transparent" }}>
+                      {selected && <span className="text-white text-[12px]">✓</span>}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
             {selectedBanks.length > 0 && (
               <button onClick={() => { setCurrentBankIdx(0); setStep("cards"); }}
@@ -324,8 +367,7 @@ export default function OnboardingFlow({ phone, onComplete }: OnboardingFlowProp
             <button onClick={() => setStep("banks")} className="text-[12px] font-semibold mb-3" style={{ color: "var(--blush)" }}>← Cambiar bancos</button>
             {(() => {
               const bankSlug = selectedBanks[currentBankIdx];
-              const allBanks = getBanksForProvince(province);
-              const bank = allBanks.find(b => b.slug === bankSlug) || { slug: bankSlug, name: bankSlug, color: "#4A5E3C", provinces: [] };
+              const bank = findBankBySlug(bankSlug, province);
               const selected = bankCards[bankSlug] || [];
               return (
                 <>
