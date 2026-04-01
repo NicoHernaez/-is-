@@ -381,15 +381,65 @@ Ordena promos dinámicamente según ciudad:
 - `WHATSAPP_FLOW_ID` — vacío (desactivado hasta business verification)
 - `FLOW_PRIVATE_KEY_B64` — clave RSA base64 para encriptación de Flows
 
-## Pendientes técnicos (31 Mar 2026)
+## Completado (1 Abr 2026)
 
-- [x] **FIX**: navegación post-onboarding PWA (refreshProfile en contexto, sin page reload)
-- [ ] Activar WhatsApp Flow cuando Meta apruebe business verification (setear `WHATSAPP_FLOW_ID=965577505925900`)
+### Fix onboarding PWA → dashboard
+- [x] **Root cause**: `loadProfile()` pedía columnas inexistentes (`plan_tier` → `subscription_tier`, `total_savings` → `total_savings_ars`)
+- [x] `refreshProfile()` en UserContext reemplaza `window.location.href` reload
+- [x] `PaymentMethod` interface exportada desde user-context
+
+### Vercel auto-deploy arreglado
+- [x] Proyecto `esplus-app` tenía `productionBranch: "main"` → cambiado a `"master"` via Vercel API
+- [x] Push a master ahora deploya automáticamente a Production en `esplus.casa`
+
+### Descuentos filtrados por medios de pago
+- [x] Nuevo `lib/promo-filter.ts` — `filterPromosForUser()` + `getUserPaymentSlugs()`
+- [x] Home y Descuentos filtran promos por bancos/wallets del usuario
+- [x] Tab "Mis medios" funciona (antes era stub)
+- [x] Solo muestra promos confirmed/probable (no unconfirmed)
+
+### MODO inferido automáticamente
+- [x] Si tiene banco MODO-compatible (Galicia, Santander, Nación, etc.) → promos MODO le aplican
+- [x] Lista de 25 bancos MODO-compatibles en `promo-filter.ts`
+- [x] Perfil muestra card MODO desplegable con explicación (qué es, cómo funciona, beneficios)
+
+### Perfil editable
+- [x] Nombre editable (click Editar → input → OK → guarda en DB via RPC)
+- [x] Agregar/quitar bancos y billeteras desde perfil
+- [x] 3 RPCs SECURITY DEFINER: `update_display_name`, `add_payment_method`, `remove_payment_method`
+- [x] Migración `00011_profile_rpcs.sql` ejecutada
+
+### DB limpia
+- [x] 16 promos eliminadas (12 duplicadas + 4 basura sin descuento)
+- [x] 16 promos unconfirmed desactivadas
+- [x] Quedan 36 activas: 11 confirmed + 25 probable
+
+### WA onboarding interactivo (sin Flows)
+- [x] Welcome pregunta canal: "Acá en WhatsApp" / "Usar la app" (link PWA)
+- [x] Si WA: detección prefijo → confirmar ciudad → lista bancos → tarjetas → billeteras → promos
+- [x] Si App: manda link `esplus.casa/?phone=XXX`
+- [x] Banco provincial primero en lista general (sin pregunta aparte, sin propaganda)
+- [x] Si no detecta prefijo: pide ubicación GPS → reverse geocode con Google Maps
+- [x] Todo por taps, cero tipeo, testeado E2E
+- [x] Edge function deployada y sincronizada (`edge-functions/` + `supabase/functions/`)
+- [x] `supabase/functions/` es la fuente de deploy (no `edge-functions/`)
+
+### Credenciales WA verificadas
+- [x] Teléfono: +54 9 2302 64-9797 (verificado, quality GREEN, CLOUD_API)
+- [x] WA_ACCESS_TOKEN funciona (test de envío exitoso)
+- [x] WA_PHONE_NUMBER_ID: `1013481788518492`
+- [x] App Meta: `1408298957267561` (AVAILABLE)
+- [x] WABA: `2121171032013347` (AVAILABLE, app suscripta)
+
+## Pendientes técnicos (1 Abr 2026)
+
+- [ ] **Meta Business Verification**: "Menos es MAS" (Business ID: `926323240360801`) — rechazada por integridad, revisar docs
+- [ ] Activar WhatsApp Flow cuando Meta apruebe (`WHATSAPP_FLOW_ID=965577505925900`)
+- [ ] Nombre en onboarding WA (hoy queda "Amiga" — se puede editar en perfil app)
 - [ ] Scraper Instagram por hashtag local (#ofertasgeneralpico)
 - [ ] Arreglar parse JSON MercadoPago (Haiku devuelve JSON malformado)
 - [ ] Cargar 198 comercios completos en Supabase (hoy hay 59)
 - [ ] Probar scrape con Galicia, Macro, Santander, Naranja X
-- [ ] Pedir nombre del usuario en onboarding (hoy queda "Amiga")
 - [ ] Comunidad page conectada a club_discounts table
 
 ## Documentación de referencia
