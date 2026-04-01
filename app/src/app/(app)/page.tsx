@@ -3,6 +3,7 @@
 import Link from "next/link";
 import DiscountCard from "@/components/ui/DiscountCard";
 import { useUser } from "@/lib/user-context";
+import { filterPromosForUser } from "@/lib/promo-filter";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -43,7 +44,7 @@ export default function HomePage() {
   const initial = user.display_name.charAt(0).toUpperCase();
   const bankCount = new Set(user.payment_methods.filter(p => p.method_type === "bank_card").map(p => p.bank_slug)).size;
   const walletCount = user.payment_methods.filter(p => p.method_type === "wallet").length;
-  const topPromos = promos.slice(0, 3);
+  const topPromos = filterPromosForUser(promos, user.payment_methods).slice(0, 3);
 
   const formatDays = (days: string[]) => {
     if (!days || days.length === 0) return "";

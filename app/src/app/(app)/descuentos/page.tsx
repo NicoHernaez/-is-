@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { useUser } from "@/lib/user-context";
+import { filterPromosForUser } from "@/lib/promo-filter";
 import DiscountCard from "@/components/ui/DiscountCard";
 
 const DAYS_MAP: Record<string, string> = { MON: "Lu", TUE: "Ma", WED: "Mi", THU: "Ju", FRI: "Vi", SAT: "Sa", SUN: "Do" };
@@ -15,19 +17,27 @@ const CATEGORIES = [
 ];
 
 export default function DescuentosPage() {
+  const { user } = useUser();
   const [promos, setPromos] = useState<any[]>([]);
   const [banks, setBanks] = useState<Record<string, string>>({});
   const [filterCat, setFilterCat] = useState("all");
   const [filterTab, setFilterTab] = useState<"mine" | "all">("mine");
 
   useEffect(() => {
-    supabase.from("promotions").select("*").eq("is_active", true).order("confidence_score", { ascending: false }).then(({ data }) => data && setPromos(data));
+    supabase.from("promotions").select("*").eq("is_active", true)
+      .in("confidence_status", ["confirmed", "probable"])
+      .order("discount_value", { ascending: false })
+      .then(({ data }) => data && setPromos(data));
     supabase.from("banks").select("slug, display_name").then(({ data }) => {
       if (data) setBanks(Object.fromEntries(data.map(b => [b.slug, b.display_name])));
     });
   }, []);
 
-  const filtered = filterCat === "all" ? promos : promos.filter(p => p.merchant_category === filterCat);
+  // Filtrar por medios de pago del usuario (tab "Mis medios") y por categoría
+  const byPayment = filterTab === "mine" && user
+    ? filterPromosForUser(promos, user.payment_methods)
+    : promos;
+  const filtered = filterCat === "all" ? byPayment : byPayment.filter(p => p.merchant_category === filterCat);
 
   return (
     <div className="px-6 pt-2">

@@ -16,7 +16,7 @@ export interface UserProfile {
   plan_tier: string;
 }
 
-interface PaymentMethod {
+export interface PaymentMethod {
   method_type: string;
   bank_slug: string | null;
   card_network: string | null;
