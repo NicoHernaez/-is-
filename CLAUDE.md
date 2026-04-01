@@ -5,7 +5,7 @@
 **-es+** ("menos es más") es una app de ahorro inteligente para Argentina. WhatsApp-first. Cruza el perfil financiero de la usuaria (tarjetas, billeteras, ubicación) con descuentos vigentes para decirle exactamente cómo gastar menos sin cambiar su rutina.
 
 - **Nombre**: `-es+` (español) / `-is+` (internacional, "less is more")
-- **Tagline**: "Menos ruido, más ahorro"
+- **Tagline**: "Ahorrá con lo que ya tenés"
 - **Asistente AI**: **Yapa** 🛍️ — mujer argentina ~40 años, habla como amiga que sabe de descuentos
 - **Público objetivo**: Mujeres de 28-55 años que administran el hogar en Argentina
 - **Modelo**: 6 meses gratis → Freemium (Free: 3 consultas Yapa/mes + resumen semanal | Start: $2.000 ARS/mes ilimitado)
@@ -225,36 +225,172 @@
 - **WhatsApp Business:** usa `esplus.casa` como URL de negocio
 - **Repo GitHub:** `NicoHernaez/-is-` → auto-deploy ambos proyectos en push a master
 
-## Migraciones pendientes de ejecutar
+## Migraciones
 
-- `00009_yapa_context_rpc.sql` — RPC `get_yapa_context(UUID)` que yapa-query necesita para funcionar
+### Ejecutadas en Supabase
+- `00010_city_merchants.sql` — tabla catálogo comercios por ciudad (Google Places) + RPC `check_merchant_in_city()`
 
-## Edge Functions — Acciones disponibles
+### Pendientes de ejecutar
+- Ninguna — todas ejecutadas
 
-### El Rastreador 🕵️ (POST)
-- `action: "normalize"` — HTML crudo → Claude Haiku → JSON de promos
-- `action: "ingest"` — promos normalizadas → deduplica → inserta como probable → registra scraping_run
+## Edge Functions — Estado de deploy (26 Mar 2026)
+
+### Yapa Query 🛍️ — DEPLOYADA ✅
+URL: `https://pexhurygyzhhcdyvhlxs.supabase.co/functions/v1/yapa-query`
+- Onboarding interactivo v2: detección ciudad por código de área, botones WA nativos
+- Consultas inteligentes con Claude Sonnet (max 250 tokens, 80 palabras)
+- Personalidad: mujer argentina ~40 años, voseo, femenino, máximo 2 emojis
+- Frecuencia default: 1x/semana viernes noche (sin preguntar en onboarding)
+- REGLA: nunca usar siglas/abreviaturas de bancos — nombre completo siempre
+
+### El Rastreador 🕵️ — DEPLOYADO ✅
+URL: `https://pexhurygyzhhcdyvhlxs.supabase.co/functions/v1/el-rastreador`
+- `action: "scrape"` — scrapea fuente completa (fetch → Haiku normalize → ingest con dedup mejorada)
+- `action: "normalize"` — HTML/markdown → Claude Haiku → JSON de promos
+- `action: "discover"` — Google Places → catálogo city_merchants
+- `action: "ingest"` — promos → deduplica por tipo+valor+categoría → inserta
 - `action: "expire"` — desactiva promos vencidas
 
-### La Lupa 🔍 (POST)
-- `action: "verify_batch"` — hasta 20 promos probable sin verificar → score 4 factores → actualiza status
-- `action: "degrade_stale"` — promos >72h sin verificar bajan un nivel
+### La Lupa 🔍 — DEPLOYADA ✅
+URL: `https://pexhurygyzhhcdyvhlxs.supabase.co/functions/v1/la-lupa`
+- `action: "verify_batch"` — hasta 20 promos probable → score 4 factores
+- `action: "degrade_stale"` — promos >72h sin verificar bajan nivel
 - `action: "process_error_reports"` — 3+ reportes en 24h → auto-downgrade
 - `action: "verify_single"` — admin confirma/rechaza manualmente
 
-### El Estratega 📊 (POST)
+### El Estratega 📊 — DEPLOYADO ✅
+URL: `https://pexhurygyzhhcdyvhlxs.supabase.co/functions/v1/el-estratega`
 - `action: "daily_report"` — reporte completo (JSON o `format: "whatsapp"`)
-- `action: "check_alerts"` — solo alertas críticas (confianza <95% = rojo)
+- `action: "check_alerts"` — solo alertas críticas
 
-## Pendientes técnicos (21 Mar 2026)
+## n8n Workflows -es+ (26 Mar 2026)
 
-- [ ] Ejecutar migración 00009 en Supabase SQL Editor
-- [ ] Seed 20+ promos reales General Pico (BLP, Galicia, cadenas locales)
-- [ ] Configurar n8n workflows para triggear los 3 agentes (cron)
-- [ ] Deploy Edge Functions en Supabase (no solo locales)
-- [ ] Conectar WhatsApp Business API (360dialog o Twilio)
-- [ ] Implementar auth (sacar TEST_USER_ID hardcodeado)
-- [ ] Implementar ai_response_cache en yapa-query
+| Workflow | ID | Trigger | Estado |
+|----------|----|---------|--------|
+| Yapa WhatsApp v2 | `wYeJr88Zx8G8OpWT` | Webhook WA | ✅ Activo |
+| Scraping Diario | `l3YIQjNT4Kd0uM9L` | Cron 6am UTC | ✅ Activo |
+| Reporte Semanal | `nuNDGP8OKuDr6JKH` | Cron lunes 9am | ✅ Activo |
+
+## Fuentes de scraping (tabla sources)
+
+11 fuentes activas con `scraping_config` JSONB:
+- **Priority 10:** Banco de La Pampa (firecrawl, bank_slug: pampa)
+- **Priority 20:** MercadoPago (firecrawl, wallet_slug: mercadopago)
+- **Priority 30:** Galicia, Macro, Santander (firecrawl)
+- **Priority 35:** La Anónima (http), Diarco (firecrawl)
+- **Priority 40:** Hipotecario/MODO, Ualá, Naranja X, MODO (firecrawl)
+
+Todas configuradas con `target_cities: ["General Pico"]`, `target_province: "La Pampa"`
+
+## Sistema de prioridad (RPC get_promos_prioritized)
+
+Ordena promos dinámicamente según ciudad:
+1. Banco provincial (10) — BLP para La Pampa
+2. MercadoPago (20) — transversal
+3. MODO (25)
+4. Bancos nacionales (30)
+5. Otras billeteras (35)
+6. Cualquier medio de pago (40)
+
+## Catálogo General Pico (city_merchants)
+
+- **59 comercios** cargados en Supabase (cadenas + farmacias + combustible + locales)
+- **198 comercios** descubiertos por Google Places (JSON en scripts/city-general-pico.json)
+- **18 handles de Instagram** configurados (lacoopear, super.muybarato, simplemercadomayorista, etc.)
+- **25 cadenas nacionales** confirmadas presentes en GP
+- Campo `instagram_handle` agregado a la tabla
+
+## Instagram — Prueba de concepto (24 Mar 2026)
+
+- Login exitoso via Chrome DevTools MCP
+- Explorado @lacoopear: highlight "Promo Bancos" tiene promos bancarias reales (Comafi 30% MODO, Banco del Sol 30%)
+- **Descubrimiento clave:** `#ofertasgeneralpico` muestra ofertas locales con precios reales (catálogos, carnicerías, panaderías)
+- Script `scripts/scrape-instagram.ts` creado (screenshots → Claude Vision → extract promos)
+- **Pendiente:** automatizar búsqueda local por hashtag
+
+## Promos en DB (24 Mar 2026)
+
+- **36 promos activas** (14 confirmed, 19 probable, 3 unconfirmed)
+- Fuentes: BLP manual + BLP scraper, Diarco scraper, Ualá scraper, seed manual
+- Incluye promos de billeteras digitales (MercadoPago, PersonalPay, NaranjaX)
+
+## Scripts locales (scripts/)
+
+| Script | Función |
+|--------|---------|
+| `discover-city.ts` | Descubre comercios en cualquier ciudad (Google Places) |
+| `discover-merchants.ts` | Versión inicial genérica |
+| `discover-chains.ts` | Busca cadenas nacionales + búsquedas amplias |
+| `test-filters.ts` | Compara filtro nombre vs curador IA |
+| `scrape-instagram.ts` | Screenshots IG → Claude Vision → extrae promos |
+
+## Env vars en Supabase Edge Functions
+
+- `ANTHROPIC_API_KEY` ✅
+- `FIRECRAWL_API_KEY` ✅ (fc-b86c7008...)
+- `GOOGLE_MAPS_API_KEY` ✅ (AIzaSyAe...)
+
+## Completado (26 Mar 2026)
+
+- [x] Migración 00009 ejecutada (get_yapa_context RPC)
+- [x] Deploy La Lupa + El Estratega como Edge Functions
+- [x] Workflow n8n "Scraping Diario" (cron 6am → scrape cada source)
+- [x] Workflow n8n "Reporte Semanal" (lunes 9am → El Estratega + La Lupa)
+- [x] Onboarding v2: detección código de área, 3 pasos, sin frecuencia/horario
+- [x] Personalidad Yapa: mujer argentina, femenino, 80 palabras max, 250 tokens
+- [x] Promos nacionales Galicia/Santander/MODO/Nación cargadas
+- [x] Duplicados BLP limpiados
+- [x] Dedup mejorada en El Rastreador (por tipo+valor+categoría)
+- [x] Correcciones: días español, tope siempre, equivalentes variados, sin siglas bancos
+- [x] n8n WA workflow actualizado: pasa interactive_reply + usa wa_message de yapa-query
+- [x] Unique index en user_locations + fix upsert → delete+insert
+- [x] Carrefour desactivada (no existe en GP)
+
+## Completado (31 Mar 2026)
+
+### WhatsApp Flows (onboarding 100% taps)
+- [x] Flow JSON v7.3 creado y subido a Meta (ID: `965577505925900`)
+- [x] Edge Function `onboarding-flow` deployada con encriptación RSA/AES-GCM
+- [x] Health check pasado (FLOW: LIMITED)
+- [x] Clave pública registrada en flow + teléfono
+- [x] App Meta conectada (`1408298957267561`)
+- [x] n8n actualizado con soporte `nfm_reply`
+- [x] 6 pantallas: PROVINCE → CITY → BANKS → CARDS → WALLETS → WALLET_CARDS
+- [ ] **BLOQUEADO**: publicar flow requiere Meta Business Verification (en revisión)
+
+### Dominio y verificación Meta
+- [x] Dominio `esplus.casa` verificado en Meta (TXT DNS + meta tag)
+- [x] Meta tag `facebook-domain-verification` en layout.tsx
+- [x] Business verification iniciada para "Menos es MAS" (en revisión por Meta)
+
+### PWA funcional con auth por teléfono
+- [x] PhoneEntry: pantalla entrada con +54 9 fijo
+- [x] UserProvider: contexto con datos reales de Supabase (phone → user → locations → payment_methods → yapa_memory)
+- [x] Onboarding in-app: provincia → ciudad → bancos (colores reales) → tarjetas (Débito/Visa/MC/Amex) → billeteras → tarjetas billetera
+- [x] RPC `complete_app_onboarding()` — SECURITY DEFINER, bypassa RLS
+- [x] RLS policies de lectura para anon (users, locations, payments, memory, promos, cities)
+- [x] Home page con datos reales del usuario
+- [x] Perfil page con bancos/billeteras reales del usuario
+- [x] Yapa chat usa phone real (no TEST_USER_ID)
+- [x] Bancos provinciales solo en su provincia, nacionales en todas
+- [x] Comafi/Brubank/Banco del Sol en sección desplegable "Otros bancos"
+- [x] Banner del banco con su color en pantalla de tarjetas
+- [x] **FIX**: post-onboarding navega al dashboard (refreshProfile en contexto, sin page reload)
+
+### Env vars nuevas en Supabase
+- `WHATSAPP_FLOW_ID` — vacío (desactivado hasta business verification)
+- `FLOW_PRIVATE_KEY_B64` — clave RSA base64 para encriptación de Flows
+
+## Pendientes técnicos (31 Mar 2026)
+
+- [x] **FIX**: navegación post-onboarding PWA (refreshProfile en contexto, sin page reload)
+- [ ] Activar WhatsApp Flow cuando Meta apruebe business verification (setear `WHATSAPP_FLOW_ID=965577505925900`)
+- [ ] Scraper Instagram por hashtag local (#ofertasgeneralpico)
+- [ ] Arreglar parse JSON MercadoPago (Haiku devuelve JSON malformado)
+- [ ] Cargar 198 comercios completos en Supabase (hoy hay 59)
+- [ ] Probar scrape con Galicia, Macro, Santander, Naranja X
+- [ ] Pedir nombre del usuario en onboarding (hoy queda "Amiga")
+- [ ] Comunidad page conectada a club_discounts table
 
 ## Documentación de referencia
 

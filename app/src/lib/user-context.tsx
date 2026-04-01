@@ -29,6 +29,7 @@ interface UserContextType {
   loading: boolean;
   phone: string | null;
   setPhone: (phone: string) => void;
+  refreshProfile: () => void;
   logout: () => void;
 }
 
@@ -37,6 +38,7 @@ const UserContext = createContext<UserContextType>({
   loading: true,
   phone: null,
   setPhone: () => {},
+  refreshProfile: () => {},
   logout: () => {},
 });
 
@@ -48,6 +50,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [phone, setPhoneState] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  function refreshProfile() {
+    setRefreshKey(k => k + 1);
+  }
 
   function setPhone(p: string) {
     // Normalizar: sacar +, espacios, guiones
@@ -99,7 +106,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       // Buscar usuario por teléfono
       const { data: users } = await supabase
         .from("users")
-        .select("id, wa_phone, display_name, onboarding_completed, plan_tier")
+        .select("id, wa_phone, display_name, onboarding_completed, subscription_tier")
         .eq("wa_phone", phone)
         .limit(1);
 
@@ -132,11 +139,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
       // Cargar memoria de Yapa (ahorro total)
       const { data: memory } = await supabase
         .from("yapa_memory")
-        .select("total_savings, preferred_categories")
+        .select("total_savings_ars, preferred_categories")
         .eq("user_id", u.id)
         .limit(1);
 
-      const mem = memory?.[0] || { total_savings: 0, preferred_categories: [] };
+      const mem = memory?.[0] || { total_savings_ars: 0, preferred_categories: [] };
 
       setUser({
         id: u.id,
@@ -145,20 +152,20 @@ export function UserProvider({ children }: { children: ReactNode }) {
         city: loc.city,
         province: loc.province,
         payment_methods: pms || [],
-        savings_total: mem.total_savings || 0,
+        savings_total: mem.total_savings_ars || 0,
         preferred_categories: mem.preferred_categories || [],
         onboarding_completed: u.onboarding_completed || false,
-        plan_tier: u.plan_tier || "free",
+        plan_tier: u.subscription_tier || "free",
       });
 
       setLoading(false);
     }
 
     loadProfile();
-  }, [phone]);
+  }, [phone, refreshKey]);
 
   return (
-    <UserContext.Provider value={{ user, loading, phone, setPhone, logout }}>
+    <UserContext.Provider value={{ user, loading, phone, setPhone, refreshProfile, logout }}>
       {children}
     </UserContext.Provider>
   );

@@ -6,7 +6,7 @@ import OnboardingFlow from "@/components/ui/OnboardingFlow";
 import { UserProvider, useUser } from "@/lib/user-context";
 
 function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, loading, phone } = useUser();
+  const { user, loading, phone, refreshProfile } = useUser();
 
   // Cargando
   if (loading) {
@@ -27,7 +27,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
 
   // Con teléfono pero sin usuario en DB → onboarding in-app
   if (!user) {
-    return <OnboardingFlow phone={phone} onComplete={() => { window.location.href = "/"; }} />;
+    return <OnboardingFlow phone={phone} onComplete={refreshProfile} />;
   }
 
   // Usuario logueado → app normal

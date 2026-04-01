@@ -200,10 +200,9 @@ export default function OnboardingFlow({ phone, onComplete }: OnboardingFlowProp
       body: JSON.stringify({ phone, name: "Amiga", query_text: "hola" }),
     }).catch(() => {});
 
-    // Guardar phone en localStorage y navegar al dashboard
+    // Guardar phone en localStorage y refrescar perfil → dashboard
     try { localStorage.setItem("esplus_phone", phone); } catch {}
-    // Esperar a que localStorage se escriba antes de navegar
-    setTimeout(() => { window.location.href = "/"; }, 300);
+    onComplete();
   };
 
   // ─── Paso actual según cards por banco ─────────────────
