@@ -60,6 +60,7 @@ export default function PerfilPage() {
   const [showAddBank, setShowAddBank] = useState(false);
   const [showAddWallet, setShowAddWallet] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [modoOpen, setModoOpen] = useState(false);
 
   if (!user) return null;
 
@@ -89,7 +90,7 @@ export default function PerfilPage() {
     const trimmed = nameInput.trim();
     if (!trimmed || trimmed === user!.display_name) { setEditingName(false); return; }
     setSavingName(true);
-    await supabase.from("users").update({ display_name: trimmed }).eq("id", user!.id);
+    await supabase.rpc("update_display_name", { p_phone: user!.wa_phone, p_name: trimmed });
     setSavingName(false);
     setEditingName(false);
     refreshProfile();
@@ -97,9 +98,8 @@ export default function PerfilPage() {
 
   async function addBank(slug: string) {
     setSaving(true);
-    // Agregar con débito por defecto
-    await supabase.from("user_payment_methods").insert({
-      user_id: user!.id, method_type: "bank_card", bank_slug: slug, card_network: "debit", is_active: true,
+    await supabase.rpc("add_payment_method", {
+      p_phone: user!.wa_phone, p_method_type: "bank_card", p_bank_slug: slug, p_card_network: "debit",
     });
     setSaving(false);
     setShowAddBank(false);
@@ -108,8 +108,8 @@ export default function PerfilPage() {
 
   async function addWallet(slug: string) {
     setSaving(true);
-    await supabase.from("user_payment_methods").insert({
-      user_id: user!.id, method_type: "wallet", wallet_slug: slug, is_active: true,
+    await supabase.rpc("add_payment_method", {
+      p_phone: user!.wa_phone, p_method_type: "wallet", p_wallet_slug: slug,
     });
     setSaving(false);
     setShowAddWallet(false);
@@ -118,16 +118,14 @@ export default function PerfilPage() {
 
   async function removeBank(slug: string) {
     setSaving(true);
-    await supabase.from("user_payment_methods")
-      .delete().eq("user_id", user!.id).eq("bank_slug", slug);
+    await supabase.rpc("remove_payment_method", { p_phone: user!.wa_phone, p_bank_slug: slug });
     setSaving(false);
     refreshProfile();
   }
 
   async function removeWallet(slug: string) {
     setSaving(true);
-    await supabase.from("user_payment_methods")
-      .delete().eq("user_id", user!.id).eq("wallet_slug", slug);
+    await supabase.rpc("remove_payment_method", { p_phone: user!.wa_phone, p_wallet_slug: slug });
     setSaving(false);
     refreshProfile();
   }
@@ -263,24 +261,44 @@ export default function PerfilPage() {
         </div>
       ))}
 
-      {/* MODO inferido */}
+      {/* MODO inferido con explicación desplegable */}
       {hasModoInferred && (
-        <div className="p-3.5 mb-2 rounded-[16px] border"
+        <div className="mb-2 rounded-[16px] border overflow-hidden"
           style={{ background: "rgba(108,60,225,0.04)", borderColor: "rgba(108,60,225,0.15)" }}>
-          <div className="flex items-center gap-3">
-            <span className="text-[20px]">💜</span>
-            <div className="flex-1">
-              <div className="text-[13px] font-semibold" style={{ color: "var(--text)" }}>MODO</div>
-              <div className="text-[11px]" style={{ color: "var(--text-sec)" }}>
-                Incluido con {Object.keys(bankGroups).map(s => BANK_NAMES[s] || s).join(" y ")}
+          <button onClick={() => setModoOpen(!modoOpen)} className="w-full p-3.5 text-left">
+            <div className="flex items-center gap-3">
+              <span className="text-[20px]">💜</span>
+              <div className="flex-1">
+                <div className="text-[13px] font-semibold" style={{ color: "var(--text)" }}>MODO</div>
+                <div className="text-[11px]" style={{ color: "var(--text-sec)" }}>
+                  Incluido con {Object.keys(bankGroups).map(s => BANK_NAMES[s] || s).join(" y ")}
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                  style={{ background: "rgba(108,60,225,0.08)", color: "#6C3CE1" }}>Auto</span>
+                <span className="text-[14px]" style={{ color: "var(--text-sec)", transform: modoOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
               </div>
             </div>
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: "rgba(108,60,225,0.08)", color: "#6C3CE1" }}>Auto</span>
-          </div>
-          <div className="text-[11px] mt-2 leading-relaxed" style={{ color: "var(--text-sec)" }}>
-            Tus bancos están en MODO. Los descuentos con MODO ya aparecen en tus promos.
-          </div>
+          </button>
+          {modoOpen && (
+            <div className="px-3.5 pb-3.5 pt-0">
+              <div className="rounded-[12px] p-3" style={{ background: "rgba(108,60,225,0.06)" }}>
+                <div className="text-[12px] font-semibold mb-2" style={{ color: "#6C3CE1" }}>¿Qué es MODO?</div>
+                <div className="text-[11px] leading-[1.6] mb-2" style={{ color: "var(--text)" }}>
+                  MODO es una billetera virtual creada por los bancos argentinos. No necesitás descargar nada extra: si tenés cuenta en un banco que participa, ya podés usar los descuentos MODO.
+                </div>
+                <div className="text-[12px] font-semibold mb-1.5" style={{ color: "#6C3CE1" }}>¿Cómo funciona?</div>
+                <div className="text-[11px] leading-[1.6] mb-2" style={{ color: "var(--text)" }}>
+                  Cuando pagás con la app de tu banco ({Object.keys(bankGroups).map(s => BANK_NAMES[s] || s).join(", ")}) en comercios adheridos, automáticamente accedés a los descuentos MODO. Aparece como opción de pago al momento de abonar.
+                </div>
+                <div className="text-[12px] font-semibold mb-1.5" style={{ color: "#6C3CE1" }}>¿En qué me beneficia?</div>
+                <div className="text-[11px] leading-[1.6]" style={{ color: "var(--text)" }}>
+                  Hay descuentos exclusivos MODO en supermercados, farmacias y estaciones de servicio. Por ejemplo: 30% en farmacias, 15% en súpers, 20% en combustible. Muchas veces se suman al descuento de tu banco.
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
